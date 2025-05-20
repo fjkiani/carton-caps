@@ -347,7 +347,7 @@ Here's our game plan for making Cappy helpful and accurate:
 
 ### 4.2. Cappy the Detective: Figuring Out What You Mean
 
-Right now, Cappy plays detective to understand what you're asking for. Inside `main.py`, we've set up a straightforward system that looks for specific keywords in your message (after converting it to lowercase, just to be safe). It's a simple approach, but it works pretty well for what we need in this prototype.
+Right now, Cappy plays detective to understand what you're asking for. Inside `main.py`, we've set up a straightforward system that looks for specific keywords in your message (after converting it to lowercase, just to be safe). It's a simple approach, but it worked pretty well for what we needed in this prototype.
 
 Here's how Cappy categorizes your questions:
 
@@ -424,19 +424,19 @@ Here's how Cappy keeps track:
 
 This whole setup helps the LLM stay up-to-date with the flow of your conversation. It means Cappy can understand when you ask follow-up questions, refer back to something you said earlier, and (hopefully!) not repeat itself too much.
 
-## 5. Where Cappy Gets Its Facts: Data Handling and Sources
+## 5. Data Handling and Sources
 
-### 5.1. Cappy's Main Filing Cabinet: The SQLite Database ([CartonCapsData.sqlite](mdc:goldenverba/data/CartonCapsData.sqlite))
-This trusty database is where Cappy keeps its organized records about users and products. To get anything from this filing cabinet, Cappy uses special helper functions found in `carton_caps_ai_service/db_utils.py`.
+### 5.1. SQLite Database: [CartonCapsData.sqlite](mdc:goldenverba/data/CartonCapsData.sqlite)
+This database is the primary source for structured user and product data. It is accessed via functions in `carton_caps_ai_service/db_utils.py`.
 
-#### 5.1.1. The `Schools` File: Keeping Track of Schools
-*   **What it's for:** Cappy uses this file to find out the name of the school (`school_name`) you're supporting. It does this by looking up the `school_id` that's linked to you in the `Users` file (we'll get to that one next!). Knowing your school's name helps Cappy make the chat more personal (for instance, it might ask, "...to help out {user_school_name}?").
-*   **Key Info Inside:** `school_id`, `school_name`.
+#### 5.1.1. `Schools` Table
+*   **Usage:** Used to look up the name of the school (`school_name`) supported by a user, based on the `school_id` associated with the user in the `Users` table. This school name is then used for personalization in the AI's responses (e.g., "...to support {user_school_name}?").
+*   **Fields Used:** `school_id`, `school_name`.
 
-#### 5.1.2. The `Users` File: Remembering Our Friends (You!)
-*   **What it's for:** This file is all about you! Cappy uses it to find your first name (`first_name`) and the `school_id` for the school you're supporting. This info is super important for Cappy to chat with you personally and understand what you care about.
-*   **Key Info Inside:** `user_id` (this is how Cappy looks you up), `first_name`, `school_id`.
-*   **Room for Growth (Limitations):** Right now, this file doesn't have a place to remember things like your favorite snacks or if you prefer gluten-free options. It also doesn't store detailed location info that could help Cappy give even more tailored advice. We do have a spot for an email address, but Cappy isn't using that at the moment.
+#### 5.1.2. `Users` Table
+*   **Usage:** Used to retrieve the user's first name (`first_name`) and the `school_id` of the school they support. This information is critical for personalizing the conversation and understanding the user's context.
+*   **Fields Used:** `user_id` (primary key for lookup), `first_name`, `school_id`.
+*   **Limitations:** Does not currently store user preferences (e.g., dietary restrictions, favorite brands) or detailed location information that could be used for more advanced personalization. The email field is present but not used by the AI assistant.
 
 #### 5.1.3. `Products` Table
 *   **Usage:** This is the catalog of products available through Carton Caps. When a user makes a product-related query, this table is searched (via `db_utils.get_products_by_keyword()`) using keywords extracted from the user's message. Matching products (name, price, description) are retrieved and presented to the user via the LLM.
@@ -529,87 +529,87 @@ Effective conversation design is key to creating an engaging and helpful AI assi
 
 ## 8. Privacy Considerations
 
-Protecting user privacy is paramount. While this is a prototype, the following privacy aspects are considered in its design and would require careful attention in a production system.
+Protecting user privacy is paramount. Even though Cappy is just a prototype right now, we've been thinking hard about how to protect your information. Here are some key things we're considering, which would need extra careful handling if Cappy were to go live.
 
-### 8.1. Data Sensitivity
-*   **Personally Identifiable Information (PII):**
-    *   **`user_id`:** While often an internal identifier, it links directly to a user.
-    *   **User Name (`first_name` from `Users` table):** Directly PII, used for personalization.
-    *   **Email (`email` from `Users` table):** PII, present in the database but *not* actively used by the AI assistant or included in LLM prompts.
-    *   **School Name (`school_name` from `Schools` table):** While not directly PII for an individual, it can be sensitive in context with other user data.
-*   **Conversation Content:** User messages can inadvertently contain PII or sensitive personal details. The `Conversation_History` table stores this content.
-*   **Purchase History (`Purchase_History` table):** Records of purchases are sensitive user data. (Currently not used by the AI in the prototype).
+### 8.1. What Kind of Info Are We Talking About?
+*   **Your Personal Details (PII - Personally Identifiable Information):**
+    *   **Your `user_id`:** This is like your secret code in our system. It points directly to you.
+    *   **Your Name (`first_name` from the `Users` file):** This is clearly you, and Cappy uses it to make chats friendly.
+    *   **Your Email (`email` in the `Users` file):** This is also personal. It's in our database, but good news: Cappy *isn't* using it or sending it to the LLM.
+    *   **Your School's Name (`school_name` from the `Schools` file):** By itself, maybe not super personal, but when combined with other info about you, it's something to be careful with.
+*   **What You Say to Cappy (Conversation Content):** Sometimes, you might accidentally share personal or sensitive things in your messages to Cappy. We store all these chats in the `Conversation_History` file.
+*   **What You've Bought (Purchase History):** Your shopping list (`Purchase_History` file) is also sensitive. (Right now, Cappy isn't looking at this for its advice, as we mentioned).
 
-### 8.2. Data Storage and Access
-*   **SQLite Database ([CartonCapsData.sqlite](mdc:goldenverba/data/CartonCapsData.sqlite)):**
-    *   **Access Control:** In a production environment, the database file itself and the server hosting the AI service would need strong access controls (e.g., file permissions, network ACLs, authentication for the service accessing the DB if it were a separate DB server).
-    *   **Encryption at Rest:** For sensitive data, consider encrypting the database file at rest.
-*   **Conversation Logs (`Conversation_History` table):**
-    *   **Purpose:** Stored for session continuity and potential (future) analytics or fine-tuning.
-    *   **Retention Policies:** In production, a clear data retention policy for conversation logs would be needed (e.g., anonymize or delete after a certain period).
-    *   **Access Audits:** Mechanisms to audit access to conversation logs should be considered.
-*   **In-Memory Data:** User-specific details and conversation history are temporarily held in memory (`conversation_sessions` in `main.py`) during an active session. This is cleared when the service restarts.
+### 8.2. Where Cappy Keeps Your Info and Who Can See It
+*   **Cappy's Main Filing Cabinet (The SQLite Database - [CartonCapsData.sqlite](mdc:goldenverba/data/CartonCapsData.sqlite)):**
+    *   **Locking the Cabinet:** If Cappy were real, we'd need strong locks on this database file and the computer it lives on. Think digital "Keep Out!" signs (like file permissions and network rules). If it was a big, fancy database, it would need its own password too.
+    *   **Secret Code for Stored Files:** For really sensitive stuff, we'd think about scrambling the database file itself so it's unreadable if it's not in Cappy's hands (this is called "encryption at rest").
+*   **Cappy's Chat Diary (`Conversation_History` file):**
+    *   **Why Keep a Diary?** Cappy jots down chats to remember what you talked about last time and, maybe one day, to help us make Cappy even smarter.
+    *   **Spring Cleaning the Diary:** If this were a real service, we'd need a rule about how long to keep these chat logs (e.g., make them anonymous or delete them after a while).
+    *   **Checking the Diary's Visitor Log:** We'd also want a way to see who's been looking at these chat logs, just to be safe.
+*   **Cappy's Quick Notes (In-Memory Data):** While you're chatting, Cappy keeps some of your details and the recent chat history in its quick-access memory (the `conversation_sessions` thing in `main.py`). But if Cappy restarts, these quick notes get wiped clean.
 
-### 8.3. LLM Interactions
-*   **Data Sent to LLM:** The prompt sent to the Google Gemini API includes:
-    *   User's first name and their supported school's name.
-    *   The user's current query.
-    *   Recent conversation history (which may contain PII shared by the user).
-    *   Contextual data retrieved from the database (product names, descriptions, prices) or simulated FAQs.
-*   **Google's Data Usage Policies:** It is crucial to be aware of and comply with Google's data usage policies for the Gemini API. As of typical LLM API terms, data sent may be temporarily processed by Google to provide the service and potentially for service improvement, subject to their terms. Opt-out capabilities for data usage in model training should be investigated if available and aligned with privacy requirements.
-*   **Minimizing PII to LLM:** While personalization is a goal, only necessary PII should be sent. For instance, the user's email is correctly *not* sent. The system avoids sending superfluous user details.
-*   **Output Filtering (Safety):** The Gemini API has built-in safety filters to prevent the generation of harmful content. The AI service relies on these, but additional client-side or server-side checks could be added if specific concerns arise.
+### 8.3. What Cappy Tells its LLM Brain (and Google)
+*   **The Info Packet Cappy Sends to the LLM:** When Cappy needs help from its Google Gemini "brain," it sends a little package of information. This includes:
+    *   Your first name and the name of the school you support.
+    *   The question you just asked.
+    *   A bit of your recent chat history (which might include personal details you've shared).
+    *   Any facts Cappy looked up from its database (like product details) or its referral FAQs.
+*   **Google's Rules of the Road:** It's super important to know and follow Google's rules for using their Gemini API. Usually, this means the info Cappy sends might be temporarily looked at by Google to make their service work and maybe to make it better, all based on their terms. We'd need to check if we can tell Google *not* to use our chats to train their models, if that's what we decide is best for privacy.
+*   **Only Telling the LLM What It Needs to Know:** Even though Cappy likes to be personal, it tries to send only the bare minimum of your personal info to the LLM. For example, it smartly *doesn't* send your email address. No oversharing!
+*   **Keeping Cappy's Replies Safe:** The Gemini API has its own built-in "guards" to stop it from saying anything harmful. Cappy relies on these, but we could add extra checks on our end if we were ever worried.
 
-### 8.4. User Consent and Transparency
-*   In a live application, users should be informed that their conversations with the AI assistant are processed and may be logged.
-*   Clear terms of service and a privacy policy accessible from within the app would be necessary.
+### 8.4. Keeping You in the Loop: Consent and Being Clear
+*   **Giving You a Heads-Up:** If Cappy were live, we'd need to make sure you know that your chats with it are being processed and possibly saved.
+*   **The Fine Print (But Easy to Find!):** We'd need clear "rules of engagement" (Terms of Service) and a straightforward Privacy Policy that you can easily find right in the app. No secrets!
 
-## 9. Trade-offs and Reasoning
+## 9. How We Made Our Choices: Trade-offs and Good Reasons
 
-Several design decisions were made during the development of this prototype, often balancing complexity, rapid development for a proof-of-concept, and robustness.
+Building Cappy (even this first version) involved making a bunch of decisions. We often had to pick between different ways of doing things, trying to balance making it smart, building it quickly to see if the idea worked, and making sure it was reasonably solid.
 
-*   **Choice of FastAPI:**
-    *   **Reasoning:** FastAPI was chosen for its high performance, ease of use, automatic data validation with Pydantic, and built-in OpenAPI/Swagger documentation. This allowed for rapid API development and clear contract definition.
-    *   **Trade-off:** For a very small service, a simpler framework like Flask might have slightly less boilerplate, but FastAPI's benefits were deemed to outweigh this for building a well-structured API quickly.
+*   **Why We Picked FastAPI for Cappy's Brain:**
+    *   **The Good Stuff:** We went with FastAPI because it's super speedy, pretty easy to get started with, and it's great at checking data (thanks to Pydantic). Plus, it automatically creates a nice map of Cappy's API (the OpenAPI/Swagger docs). All this helped us build Cappy's API quickly and make sure its "chat contract" was clearly laid out.
+    *   **The Other Side of the Coin:** If Cappy were a *really* tiny service, something like Flask might have meant a tiny bit less setup. But, for building a well-organized API in a hurry, we felt FastAPI's pluses were worth it.
 
-*   **SQLite for Database:**
-    *   **Reasoning:** SQLite is file-based, requires no separate server setup, and is easily bundled, making it ideal for a self-contained prototype and for working with the provided mock dataset.
-    *   **Trade-off:** SQLite is not designed for high-concurrency production workloads that a popular mobile app might generate. A production system would likely use a more robust database server (e.g., PostgreSQL, MySQL, or a NoSQL alternative).
+*   **Why Cappy Uses a Simple SQLite Database (For Now):**
+    *   **The Good Stuff:** SQLite is like a handy, portable filing cabinet. It's just a file, so we didn't need to set up a separate database server. This made it perfect for building a quick prototype and using the sample data we had.
+    *   **The Other Side of the Coin:** SQLite is great for simple things, but it's not built for the kind of heavy traffic a super popular app might get (lots of people chatting with Cappy all at once). If Cappy were to go big, it would need a more heavy-duty database (like PostgreSQL, MySQL, or something called NoSQL).
 
-*   **Rule-Based Intent Detection:**
-    *   **Reasoning:** Simple keyword matching is quick to implement and transparent for a limited set of intents (product queries, referral questions). It performed well for the defined scope.
-    *   **Trade-off:** This approach is not scalable to a large number of intents or nuanced user utterances. It can be brittle if users phrase their queries in unexpected ways. A more sophisticated NLU component or LLM-based intent detection would be needed for a production system with broader capabilities.
+*   **How Cappy Figures Out What You Mean (Our Simple Keyword Spotting):**
+    *   **The Good Stuff:** For this first version, Cappy just looks for simple keywords to figure out if you're asking about products or referrals. It was quick to set up, easy to understand, and worked pretty well for the main things we wanted Cappy to do.
+    *   **The Other Side of the Coin:** This keyword-spotting is a bit basic. It wouldn't work so well if Cappy needed to understand lots of different types of questions, or if people asked things in really creative ways. If Cappy gets more advanced, it'll need smarter ways to understand you – maybe a special "Natural Language Understanding" (NLU) brain, or even ask its main LLM brain to help figure out what you mean.
 
-*   **Simulated RAG for PDF FAQs:**
-    *   **Reasoning:** Implementing a full RAG pipeline (PDF parsing, chunking, embedding, vector store, semantic search) was deemed out of scope for the initial prototype given time constraints. Using a hardcoded string provides the *effect* of RAG for the referral intent, allowing testing of the LLM's ability to use provided context.
-    *   **Trade-off:** The system cannot answer questions about referrals beyond the content of the hardcoded string. It lacks the dynamic retrieval capabilities of a true RAG system.
+*   **How Cappy "Reads" the Referral PDF (Our Pretend RAG):**
+    *   **The Good Stuff:** Setting up a full-blown "Retrieval Augmented Generation" (RAG) system – which is a fancy way to say Cappy can intelligently search and pull info from documents – was a bit much for this first prototype. So, to get the *idea* of RAG working for referral questions, we basically gave Cappy the text from the PDF directly. This let us test if the LLM could use info we give it.
+    *   **The Other Side of the Coin:** Because it's not *really* reading and searching the PDF dynamically, Cappy can only answer referral questions based on the text we pre-loaded. It can't dig for new info in the PDF like a true RAG system could.
 
-*   **In-Memory Session Cache with DB Persistence for Conversation History:**
-    *   **Reasoning:** The in-memory dictionary (`conversation_sessions`) provides fast access to recent conversation history for prompt construction. Persisting to the `Conversation_History` table ensures data isn't lost if the service restarts and allows for potential future analytics.
-    *   **Trade-off:** If the service restarts, the in-memory cache is lost. While the API allows the client to send history, and history is in the DB, the current prototype doesn't automatically rehydrate the in-memory cache from the DB for an *existing session_id* upon a new request (it primarily relies on the client or the session still being in memory). A more robust session management system (e.g., using Redis) would be better for production.
+*   **Cappy's Short-Term Memory vs. Its Long-Term Diary:**
+    *   **The Good Stuff:** Cappy uses its quick "in-memory" notes (`conversation_sessions`) to quickly grab your recent chat history when it's figuring out what to say next. It also saves a copy of everything to its main `Conversation_History` diary so chats aren't lost if Cappy restarts and so we can look at them later (maybe to make Cappy better).
+    *   **The Other Side of the Coin:** If Cappy does restart, those quick in-memory notes are gone. Even though the full chat is in Cappy's diary (and the app can send history too), Cappy currently doesn't automatically re-read its diary to pick up an old conversation if your `session_id` is still active. For a live service, we'd want a smarter way to handle this "memory," maybe using a tool like Redis.
 
-*   **Direct Context Injection vs. LLM Tool Calling:**
-    *   **Reasoning:** Retrieving data from the DB/FAQs *before* calling the LLM and injecting it directly into the prompt is a straightforward and reliable way to provide context for the current scope. It gives explicit control over what information the LLM sees.
-    *   **Trade-off:** This approach is less flexible than LLM tool/function calling, where the LLM itself might decide which tools to use to gather information. However, for a well-defined set of tasks, direct injection can be more efficient and predictable.
+*   **How Cappy Gets Information: Spoon-Feeding vs. Letting the LLM Fetch:**
+    *   **The Good Stuff (Our Current Way - Spoon-Feeding):** Right now, Cappy's main service does the work of finding information (from the database or referral FAQs) *before* it talks to the LLM. Then, it "spoon-feeds" this info directly into the instructions for the LLM. This is a simple and dependable way to make sure the LLM has the facts it needs, and we know exactly what information it's seeing.
+    *   **The Other Side of the Coin (Future Idea - LLM Fetching):** This "spoon-feeding" is less flexible than a more advanced technique called "tool calling" or "function calling." That's where the LLM itself could decide it needs a piece of information and then use a "tool" to go fetch it. But for the fairly straightforward things Cappy does now, our direct approach works well and is easier to predict.
 
-*   **Google Gemini Pro Model (`gemini-1.5-pro`):**
-    *   **Reasoning:** This model offers a good balance of advanced conversational capabilities, instruction following, and availability.
-    *   **Trade-off:** Costs associated with LLM API calls need to be considered for a production system. Different models might offer varying performance/cost trade-offs.
+*   **Choosing Cappy's "Big Brain" (Google Gemini Pro - `gemini-1.5-pro`):**
+    *   **The Good Stuff:** We picked Google's `gemini-1.5-pro` model because it's a good all-rounder: it's smart at chatting, good at following our detailed instructions, and it's readily available for us to use.
+    *   **The Other Side of the Coin:** Using powerful LLM brains like this costs money for every chat. If Cappy were a real, live service, we'd have to keep an eye on these costs. There are other LLM models out there, and they all have different strengths, weaknesses, and price tags.
 
-*   **Limited Scope for User Profile Usage:**
-    *   **Reasoning:** While the API contract includes a `user_profile` section, its use in the prototype is limited to name and school for personalization. Fully leveraging purchase history or preferences would significantly increase complexity.
-    *   **Trade-off:** Personalization is currently basic. Deeper personalization is a clear area for future enhancement.
+*   **How Much Cappy Knows About You (For Now, Just the Basics):**
+    *   **The Good Stuff:** We designed Cappy's "chat contract" with a spot for `user_profile` info. In this first version, Cappy just uses your name and school to make the chat a bit more personal.
+    *   **The Other Side of the Coin:** Cappy isn't (yet!) smart enough to look at what you've bought before or remember your favorite snacks. Making Cappy *that* personal would be a bigger job. So, for now, its personal touch is pretty simple, but there's lots of room to make it more tailored to you in the future!
 
-## 10. Future Evolution
+## 10. Cappy's Bright Future: Ideas for What's Next
 
-This prototype lays a solid foundation. Several areas offer potential for future enhancements to create a more robust, capable, and intelligent AI assistant:
+This first version of Cappy is a great start, like laying down the first few bricks of a really cool LEGO castle. There are tons of exciting ways we could build on this foundation to make Cappy even smarter, more helpful, and an even more awesome AI pal.
 
-*   **Full RAG Implementation for FAQs:**
-    *   Replace the hardcoded referral FAQ string with a proper RAG pipeline. This would involve:
-        *   Processing the [Carton Caps Referral FAQs.pdf](mdc:goldenverba/data/Carton Caps Referral FAQs.pdf) (and potentially other documents) into text chunks.
-        *   Generating embeddings for these chunks using a sentence transformer or similar model.
-        *   Storing these embeddings in a vector database (e.g., Weaviate, Pinecone, FAISS).
-        *   When a referral-related (or other FAQ-based) query is detected, perform a semantic search against the vector database to retrieve the most relevant chunks to inject into the LLM prompt.
+*   **Teaching Cappy to *Really* Read the FAQs (Full RAG Power-Up):**
+    *   Instead of just having the referral FAQ text pre-loaded, we could teach Cappy to be a super-smart document reader. This means:
+        *   Taking the [Carton Caps Referral FAQs.pdf](mdc:goldenverba/data/Carton Caps Referral FAQs.pdf) (and maybe other info sheets later) and breaking them into bite-sized pieces.
+        *   Teaching a special AI model to understand what each piece is about (this is called "generating embeddings").
+        *   Storing these "understandings" in a special kind of database (a "vector database" like Weaviate, Pinecone, or FAISS – think of it as a super-organized library for AI).
+        *   Then, when you ask a question about referrals (or anything else Cappy has "read"), it would quickly search its library for the most helpful snippets and use those to give you a great answer.
 *   **Enhanced Intent Detection and NLU:**
     *   Move beyond simple keyword matching to a more sophisticated NLU model for intent classification and slot filling. This could involve training a custom model or leveraging LLM capabilities for intent recognition.
     *   Support for a wider range of user intents (e.g., checking order status, managing account preferences, asking about specific school fundraising goals).
