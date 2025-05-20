@@ -1,0 +1,25 @@
+---
+description: 
+globs: 
+alwaysApply: false
+---
+# Carton Caps AI Chat Agent: Project Overview
+
+## Challenge Goal
+To prototype an AI-driven conversational assistant for the Carton Caps mobile application. The assistant's primary functions are to help users find personalized product recommendations and understand the app's referral process, thereby enhancing user engagement and supporting smarter decision-making.
+
+## Key Deliverables
+1.  **Technical Specification:** Including API design, system architecture diagrams, and a detailed LLM strategy.
+2.  **Prototype Conversational AI Service:** A working API endpoint that demonstrates multi-turn conversation capabilities, LLM integration (or simulation), and necessary context management.
+
+## Core Functionality of the AI Assistant
+-   Engage users in natural, helpful, and multi-turn conversations.
+-   Provide personalized product recommendations based on user context and available product data.
+-   Clearly explain the Carton Caps referral process using the provided FAQ document.
+
+## Key Data Sources
+The AI assistant will utilize the following primary data sources:
+-   A SQLite database containing user, product, school, and purchase history (mock) data: [CartonCapsData.sqlite](mdc:goldenverba/data/CartonCapsData.sqlite)
+-   A PDF document detailing the referral program: [Carton Caps Referral FAQs.pdf](mdc:goldenverba/data/Carton Caps Referral FAQs.pdf)
+
+Further details on data usage, API design, and LLM strategy are available in dedicated rule files.

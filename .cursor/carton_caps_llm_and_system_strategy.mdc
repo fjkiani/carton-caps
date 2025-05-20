@@ -1,0 +1,57 @@
+---
+description: 
+globs: 
+alwaysApply: false
+---
+# Carton Caps AI Agent: LLM and System Strategy
+
+This document details the strategy for LLM integration, intent recognition, and overall system logic for the Carton Caps AI chat agent.
+
+## Core System Approach: Hybrid Information Retrieval
+The system will employ a hybrid approach, combining Retrieval-Augmented Generation (RAG) for unstructured text with direct querying of structured data:
+
+1.  **RAG for Referral FAQs:**
+    -   **Source:** [Carton Caps Referral FAQs.pdf](mdc:goldenverba/data/Carton Caps Referral FAQs.pdf)
+    -   **Process:** User queries related to the referral program will be used to retrieve relevant text chunks from the indexed PDF. This context will be provided to the LLM to generate an answer.
+    -   **Integration:** This can potentially leverage Verba's existing RAG pipeline if the service is built as an extension or incorporates Verba's modules.
+
+2.  **Structured Data Querying for Products & User Context:**
+    -   **Source:** [CartonCapsData.sqlite](mdc:goldenverba/data/CartonCapsData.sqlite)
+    -   **Process:** Queries for product recommendations, user-specific information (e.g., associated school), or past purchase history (if available) will involve direct SQL queries to the database.
+    -   **Tables Used:** `Products`, `Users`, `Schools`, `Purchase_History`.
+
+## Intent Recognition and Routing
+A critical first step in processing a user's message is to identify their intent. Based on the recognized intent, the system will route the request to the appropriate information retrieval mechanism:
+-   **`product_recommendation` / `product_query`:** Route to structured data querying of the `Products` table in [CartonCapsData.sqlite](mdc:goldenverba/data/CartonCapsData.sqlite). May also consult `Purchase_History` or `Users` table for personalization.
+-   **`referral_process_question`:** Route to the RAG system using [Carton Caps Referral FAQs.pdf](mdc:goldenverba/data/Carton Caps Referral FAQs.pdf).
+-   **`general_greeting` / `small_talk`:** Handle with direct LLM generation, possibly with minimal context.
+-   **`user_profile_update` / `preference_setting`:** (Future consideration) Would involve writing to the `Users` table or a dedicated preferences table.
+
+## LLM as a "Smart Router" and "Synthesizer"
+The LLM plays several key roles:
+1.  **Intent Understanding:** Interpreting the user's natural language input.
+2.  **Tool/Function Orchestration (Conceptual):** Deciding which data source or "tool" is needed. For the prototype, this might be implemented as conditional logic in the backend service that calls specific data-fetching functions. Conceptual tools:
+    -   `getProductInfoFromDB(filters, user_context)`
+    -   `getReferralInfoFromFAQ(user_question)`
+    -   `getUserContextFromDB(user_id)`
+3.  **Response Generation:** Synthesizing information retrieved from various sources (database records, FAQ text chunks) into a coherent, conversational, and helpful natural language reply.
+4.  **Contextual Awareness:** Utilizing conversation history to maintain dialogue coherence and understand follow-up questions.
+
+## Prompt Engineering
+Effective prompt engineering will be crucial:
+-   **System Prompt:** Define the AI's persona (helpful Carton Caps assistant), its capabilities (product recommendations, referral info), and limitations.
+-   **Task-Specific Prompts:** Guide the LLM on how to:
+    -   Formulate answers based *only* on provided context (from RAG or DB).
+    -   Handle cases where information is not found.
+    -   Politely acknowledge data limitations (e.g., "I don't have specific categories like 'gluten-free' yet, but based on descriptions...").
+    -   Integrate personalized elements (e.g., user's school name, past purchases if available).
+
+## Personalization Strategy
+-   Fetch user's name and associated school from the `Users` and `Schools` tables in [CartonCapsData.sqlite](mdc:goldenverba/data/CartonCapsData.sqlite) using `user_id`.
+-   If `Purchase_History` table in [CartonCapsData.sqlite](mdc:goldenverba/data/CartonCapsData.sqlite) is populated, use this data to suggest related products or highlight items previously purchased.
+-   Acknowledge that deeper personalization (e.g., based on explicit dietary preferences) is limited by the current database schema.
+
+## Addressing Data and System Limitations (Important for Documentation)
+-   **Product Discovery:** Recommendations will primarily rely on keyword matching and semantic similarity within `Products.name` and `Products.description` from [CartonCapsData.sqlite](mdc:goldenverba/data/CartonCapsData.sqlite) due to the absence of structured `category` or `keyword` fields.
+-   **Referral Information Source:** All information regarding the referral process will be sourced exclusively from [Carton Caps Referral FAQs.pdf](mdc:goldenverba/data/Carton Caps Referral FAQs.pdf) via RAG. The LLM must be guided not to expect structured referral data in the SQLite database.
+-   **Empty `Purchase_History`:** The impact of this on demonstrating purchase-based recommendations in the prototype should be noted. Mock data may be needed.

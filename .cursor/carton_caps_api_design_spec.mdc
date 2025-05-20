@@ -1,0 +1,82 @@
+---
+description: 
+globs: 
+alwaysApply: false
+---
+# Carton Caps AI Agent: API Design Specification
+
+This document outlines the API contract for the conversational AI agent designed for the Carton Caps application.
+
+## Endpoint
+-   **Method:** `POST`
+-   **Path:** `/api/v1/carton_caps/chat`
+    *(Using `/v1/` for versioning and `/carton_caps/` for namespacing specific to this agent)*
+
+## Request Body
+```json
+{
+  "user_id": "string", // REQUIRED: Unique identifier for the authenticated Carton Caps user.
+  "session_id": "string", // REQUIRED: Unique identifier for the current chat session. Can be client-generated for the first message or server-generated and returned.
+  "message": { // REQUIRED: The user's current message object.
+    "text": "string", // REQUIRED: The textual content of the user's message.
+    "timestamp": "iso_datetime_string" // REQUIRED: Client-side ISO 8601 timestamp of when the message was sent.
+  },
+  "conversation_history": [ // OPTIONAL: Array of previous messages in the current session.
+                            // If omitted, the server should retrieve history based on session_id.
+    {
+      "role": "user | assistant", // Who sent the message.
+      "content": "string",        // The text of the message.
+      "timestamp": "iso_datetime_string" // Timestamp of the historical message.
+    }
+  ],
+  "user_profile": { // OPTIONAL: Additional context about the user.
+                    // Can be partially provided by the client or enriched by the backend
+                    // using user_id and data from [CartonCapsData.sqlite](mdc:goldenverba/data/CartonCapsData.sqlite).
+    "preferences": ["string"], // e.g., ["organic", "gluten-free"] (Note: DB doesn't currently store this)
+    "past_purchases_summary": ["string"], // e.g., ["BrandX Cereal"] (Derived from Purchase_History if available)
+    "location_context": {
+        "city": "string",
+        "region": "string"
+    }
+  },
+  "client_context": { // OPTIONAL: Context from the mobile app's current state.
+      "current_view": "string" // e.g., "product_list_page", "referral_section"
+  }
+}
+```
+
+## Response Body
+```json
+{
+  "session_id": "string", // REQUIRED: The session_id for the current conversation.
+  "reply": { // REQUIRED: The assistant's response object.
+    "text": "string", // REQUIRED: The textual content of the assistant's reply.
+    "timestamp": "iso_datetime_string" // REQUIRED: Server-side ISO 8601 timestamp of when the reply was generated.
+  },
+  "updated_conversation_history": [ // REQUIRED: The full conversation history including the latest user message and assistant reply.
+    {
+      "role": "user | assistant",
+      "content": "string",
+      "timestamp": "iso_datetime_string"
+    }
+  ],
+  "suggested_actions": [ // OPTIONAL: Array of suggested actions the user can take.
+    {
+      "type": "quick_reply | product_link | referral_link | external_url", // Type of action.
+      "text_label": "string", // REQUIRED: User-facing text for the action, e.g., "Tell me more", "View Product Y".
+      "payload": "string | object" // REQUIRED: Data associated with the action, e.g., a predefined query, product_id, URL.
+    }
+  ],
+  "debug_info": { // OPTIONAL: For development and prototyping. Not for production client use.
+    "intent_detected": "string", // e.g., "referral_question", "product_recommendation_request".
+    "retrieved_context_summary": "string", // e.g., "Retrieved 3 chunks from FAQ document", "Fetched 5 products from DB".
+    "data_sources_used": ["string"] // e.g., ["FAQ_PDF", "Product_DB"]
+  }
+}
+```
+
+## Conversation State Management
+-   **Strategy:** Server-side state management is preferred for robustness and to minimize client-side complexity.
+-   **Mechanism:** The `session_id` is the key to link turns within a conversation.
+-   **Persistence (Recommended):** The `Conversation_History` table within [CartonCapsData.sqlite](mdc:goldenverba/data/CartonCapsData.sqlite) can be used to store and retrieve chat logs associated with a `user_id` and `session_id`.
+-   **Fallback/Prototype:** For initial prototyping, in-memory session storage on the server could be used, or the client could pass the full `conversation_history` on each request (less ideal for scalability).

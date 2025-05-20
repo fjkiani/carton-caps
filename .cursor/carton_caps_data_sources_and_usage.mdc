@@ -1,0 +1,38 @@
+---
+description: 
+globs: 
+alwaysApply: false
+---
+# Carton Caps AI Agent: Data Sources and Usage
+
+This document outlines the primary data sources for the Carton Caps AI chat agent and their intended use.
+
+## 1. SQLite Database
+-   **File:** [CartonCapsData.sqlite](mdc:goldenverba/data/CartonCapsData.sqlite)
+-   **Purpose:** Provides structured data about users, products, schools, and potentially purchase/conversation history.
+
+### Key Tables & Intended Use:
+-   **`Schools`**: Contains school information (`id`, `name`, `address`). Used to associate users with schools they support, allowing for context-aware interactions.
+-   **`Users`**: Stores user details (`id`, `school_id`, `name`, `email`). The `id` serves as the primary `user_id` for API calls and context fetching.
+    -   *Limitation:* Does not contain explicit user preferences (e.g., dietary, brand), which impacts the depth of personalization for recommendations.
+-   **`Products`**: Catalog of available products (`id`, `name`, `description`, `price`).
+    -   *Limitation:* Lacks structured `category` or `keywords` fields. Product recommendations will rely heavily on semantic search/matching against `name` and `description`.
+-   **`Purchase_History`**: Designed to link users to products they've purchased (`user_id`, `product_id`, `quantity`).
+    -   *Limitation:* The provided mock data for this table is currently empty. Personalization based on past purchases is designed for but may not be fully demonstrable without populating this table.
+-   **`Conversation_History`**: Contains fields for storing chat logs (`user_id`, `message`, `sender`, `timestamp`). This table can be used by the AI service to persist and retrieve conversation context for ongoing sessions.
+
+### Primary Use of SQLite Data:
+-   Fetching user context (name, associated school) for personalization.
+-   Retrieving product information (name, description, price) to formulate recommendations.
+-   Potentially using `Purchase_History` data (if available/mocked) to inform "customers who bought X also liked Y" style recommendations.
+-   Storing and retrieving conversation turns using the `Conversation_History` table to maintain session context.
+
+## 2. Referral FAQ Document
+-   **File:** [Carton Caps Referral FAQs.pdf](mdc:goldenverba/data/Carton Caps Referral FAQs.pdf)
+-   **Purpose:** Serves as the primary knowledge base for questions related to the Carton Caps referral program.
+
+### Primary Use of FAQ Document:
+-   To be processed and indexed by a Retrieval-Augmented Generation (RAG) system (potentially leveraging Verba's core capabilities).
+-   The RAG system will retrieve relevant sections from this document when users ask questions about how the referral process works, its rules, benefits, etc.
+-   The LLM will then use this retrieved context to generate informative and accurate answers.
+    -   *Note:* The SQLite database ([CartonCapsData.sqlite](mdc:goldenverba/data/CartonCapsData.sqlite)) does not appear to contain structured data about individual referral statuses or specific program mechanics; thus, the PDF is the sole source for this information.
